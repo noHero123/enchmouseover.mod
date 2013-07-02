@@ -38,6 +38,7 @@ namespace enchmouseover.mod
         private BattleMode bm = null;
         private Boolean showpicture = false;
         private Boolean showall = false;
+        private Boolean allwayson = false;
         List<enchantments> enchlist = new List<enchantments>();
         List<enchantments> Allenchlist = new List<enchantments>();
         Dictionary<string, Texture2D> enchantslib= new Dictionary<string, Texture2D>();
@@ -330,6 +331,20 @@ namespace enchmouseover.mod
                                 writetxtinchat(text);
                                 donesomething = true;
                             }
+                            if (splitt[1] == "ctrlon")
+                            {
+                                this.allwayson = true;
+                                string text = "if unit stats are shown permanently, enchantments are shown permanently, ";
+                                writetxtinchat(text);
+                                donesomething = true;
+                            }
+                            if (splitt[1] == "ctrloff")
+                            {
+                                this.allwayson = false;
+                                string text = "if unit stats are shown permanently, enchantments aren't shown permanently, ";
+                                writetxtinchat(text);
+                                donesomething = true;
+                            }
 
 
                         }
@@ -380,7 +395,7 @@ namespace enchmouseover.mod
                 {
                     bm = (BattleMode)info.target;
                 }
-                if (showall == true)
+                if (showall == true && this.allwayson==true)
                 {
 
                     Allenchlist.Clear();
