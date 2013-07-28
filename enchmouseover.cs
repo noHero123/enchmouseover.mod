@@ -296,7 +296,36 @@ namespace enchmouseover.mod
             }
 		}
 
-        public override bool BeforeInvoke(InvocationInfo info, out object returnValue) {
+
+
+
+
+        public override bool WantsToReplace(InvocationInfo info)
+        {
+            if (info.targetMethod.Equals("sendBattleRequest"))
+            {
+                Console.WriteLine("sendrequest");
+                if (info.arguments[0] is GameChatMessageMessage)
+                {
+
+
+                    GameChatMessageMessage msg = (GameChatMessageMessage)info.arguments[0];
+
+                    string[] splitt = msg.text.Split(' ');
+
+                    if ((splitt[0] == "/showench" || splitt[0] == "\\showench"))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+
+
+        public override void ReplaceMethod(InvocationInfo info, out object returnValue)
+        {
             
             returnValue = null;
 
@@ -353,15 +382,19 @@ namespace enchmouseover.mod
                             string text = "commands: circle, below";
                             writetxtinchat(text);
                         }
-                        return true;
+                       
                     }
 
                 }
             }
+        }
+
+        public override void BeforeInvoke(InvocationInfo info)
+        {
 
 
-            return false;
-        
+            return;
+
         }
 
         public override void AfterInvoke (InvocationInfo info, ref object returnValue)
