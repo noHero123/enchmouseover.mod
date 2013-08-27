@@ -228,6 +228,8 @@ namespace enchmouseover.mod
                     {
                         string enchname = tmpench.name;
                         if (enchname == "Poison") { enchname = "Ranger's Bane"; };
+                        if (enchname == "Curse 1") { enchname = "Cluster Hex"; };
+                        if (enchname == "Curse 2") { enchname = "Cluster Hex"; };
                         Texture2D newtexture = new Texture2D(2, 2, TextureFormat.RGB24, false);
                         newtexture = App.AssetLoader.LoadTexture2D(cardnametoimageid(enchname).ToString());
                         this.enchantslib.Add(tmpench.name, newtexture);
