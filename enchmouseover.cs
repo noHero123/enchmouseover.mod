@@ -49,7 +49,11 @@ namespace enchmouseover.mod
         private int[] cardImageid;
         private int showpattern=2;
 
-
+        private MethodInfo mi;
+        private FieldInfo reftile;
+        private FieldInfo tileover;
+        private FieldInfo mrktpe;
+        private FieldInfo sbfrm;
         private int cardnametoimageid(string name) { return cardImageid[Array.FindIndex(cardnames, element => element.Equals(name))]; }
         public void handleMessage(Message msg)
         { // collect data for enchantments (or units who buff)
@@ -109,6 +113,12 @@ namespace enchmouseover.mod
 		//initialize everything here, Game is loaded at this point4
         public enchmouseover()
 		{
+
+            mi = typeof(BattleMode).GetMethod("getAllUnitsCopy", BindingFlags.NonPublic | BindingFlags.Instance);
+            reftile = typeof(Tile).GetField("referenceTile", BindingFlags.Instance | BindingFlags.NonPublic);
+            tileover = typeof(Tile).GetField("tileOverlay", BindingFlags.Instance | BindingFlags.NonPublic);
+            mrktpe = typeof(Tile).GetField("markerType", BindingFlags.Instance | BindingFlags.NonPublic);
+            sbfrm = typeof(Tile).GetField("subFrame", BindingFlags.Instance | BindingFlags.NonPublic);
             try
             {
                 App.Communicator.addListener(this);
@@ -289,6 +299,7 @@ namespace enchmouseover.mod
                    scrollsTypes["BattleMode"].Methods.GetMethod("tileOver", new Type[]{typeof(GameObject),typeof(int),typeof(int)} ),
                     scrollsTypes["BattleMode"].Methods.GetMethod("tileOut", new Type[]{typeof(GameObject),typeof(int),typeof(int)} ),
                     scrollsTypes["BattleMode"].Methods.GetMethod("toggleUnitStats")[0],
+                    //scrollsTypes["Tile"].Methods.GetMethod("updateMoveAnim")[0],
 
              };
             }
@@ -402,8 +413,6 @@ namespace enchmouseover.mod
         public override void AfterInvoke (InvocationInfo info, ref object returnValue)
         
         {
-
-
             if (info.target is BattleMode && info.targetMethod.Equals("toggleUnitStats"))
             {
                 Boolean showUnitStats= (Boolean)typeof(BattleMode).GetField ("showUnitStats", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(info.target);
@@ -430,11 +439,16 @@ namespace enchmouseover.mod
                 {
                     bm = (BattleMode)info.target;
                 }
+
+
+                
+
+
                 if (showall == true && this.allwayson==true)
                 {
 
                     Allenchlist.Clear();
-                    MethodInfo mi = typeof(BattleMode).GetMethod("getAllUnitsCopy", BindingFlags.NonPublic | BindingFlags.Instance);
+                    
                     foreach (Unit current in (List<Unit>)mi.Invoke(this.bm, null))
                     {
                         List<EnchantmentInfo> enchants = current.getBuffs();
@@ -464,9 +478,29 @@ namespace enchmouseover.mod
                     }
                 }
 
+                
+                foreach (Unit current in (List<Unit>)mi.Invoke(this.bm, null))
+                {
+                    current.renderer.material.color = new Color(1f, 1f, 1f, 1f);
+                    List<EnchantmentInfo> enchants = current.getBuffs();
+                    Tile component = ((BattleMode)info.target).getTileFromUnit(current);
+                    if (enchants.Count > 0)
+                    {
+                        Tile.SelectionType marker = (Tile.SelectionType)mrktpe.GetValue(component);
+                        if (marker != Tile.SelectionType.Hover)
+                        {
+                            current.renderer.material.color = new Color(1.0f, 0.5f, 0.5f, 0.7f);
+                            //GameObject refer = (GameObject)reftile.GetValue(component);
+                            //refer.renderer.material.color = new Color(1.0f, 0f, 0f, 0.4f);
+                            //GameObject to = (GameObject)tileover.GetValue(component);
+                            //to.renderer.material.color = new Color(1.0f, 0f, 0f, 0.4f);
+                        }
+                    }
+                }
+                
             }
 
-            if (info.target is BattleMode && info.targetMethod.Equals("tileOver"))
+           if (info.target is BattleMode && info.targetMethod.Equals("tileOver"))
             {
                 showpicture = true;
                 GameObject tile = (GameObject)info.arguments[0];
@@ -483,6 +517,7 @@ namespace enchmouseover.mod
             {
                 showpicture = false;
             }
+
 
 
 
