@@ -55,6 +55,11 @@ namespace enchmouseover.mod
         private FieldInfo mrktpe;
         private FieldInfo sbfrm;
         private int cardnametoimageid(string name) { return cardImageid[Array.FindIndex(cardnames, element => element.Equals(name))]; }
+
+        public void onConnect(OnConnectData ocd)
+        { 
+        //lol
+        }
         public void handleMessage(Message msg)
         { // collect data for enchantments (or units who buff)
 
