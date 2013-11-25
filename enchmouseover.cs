@@ -129,7 +129,7 @@ namespace enchmouseover.mod
                 App.Communicator.addListener(this);
             }
             catch { }
-            Console.WriteLine("lodet newmenuepoint ####################################");
+            Console.WriteLine("lodet enchmouseover ####################################");
     
 		}
 
@@ -297,14 +297,14 @@ namespace enchmouseover.mod
             try
             {
                 return new MethodDefinition[] {
-                    scrollsTypes["Communicator"].Methods.GetMethod("sendBattleRequest", new Type[]{typeof(Message)}),
-                    //scrollsTypes["ChatUI"].Methods.GetMethod("OnGUI")[0],
+                    scrollsTypes["BattleMode"].Methods.GetMethod("sendBattleRequest", new Type[]{typeof(Message)}),
                     scrollsTypes["BattleMode"].Methods.GetMethod("OnGUI")[0],
-                    // scrollsTypes["BattlemodeUI"].Methods.GetMethod("Update")[0],
-                   scrollsTypes["BattleMode"].Methods.GetMethod("tileOver", new Type[]{typeof(GameObject),typeof(int),typeof(int)} ),
+                   scrollsTypes["BattleMode"].Methods.GetMethod("tileOver", new Type[]{typeof(Tile),typeof(int),typeof(int)} ),
                     scrollsTypes["BattleMode"].Methods.GetMethod("tileOut", new Type[]{typeof(GameObject),typeof(int),typeof(int)} ),
                     scrollsTypes["BattleMode"].Methods.GetMethod("toggleUnitStats")[0],
+                     // scrollsTypes["BattlemodeUI"].Methods.GetMethod("Update")[0],
                     //scrollsTypes["Tile"].Methods.GetMethod("updateMoveAnim")[0],
+                   //scrollsTypes["ChatUI"].Methods.GetMethod("OnGUI")[0],
 
              };
             }
@@ -508,8 +508,7 @@ namespace enchmouseover.mod
            if (info.target is BattleMode && info.targetMethod.Equals("tileOver"))
             {
                 showpicture = true;
-                GameObject tile = (GameObject)info.arguments[0];
-                Tile component = tile.GetComponent<Tile>();
+                Tile component = (Tile)info.arguments[0];
                 Unit unitFromTile = ((BattleMode)info.target).getUnitFromTile(component);
                 enchlist.Clear();
                 if (unitFromTile != null)
