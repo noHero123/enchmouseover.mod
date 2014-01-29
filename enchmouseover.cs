@@ -142,7 +142,7 @@ namespace enchmouseover.mod
 
 		public static int GetVersion ()
 		{
-			return 1;
+			return 5;
 		}
 
         private void Allenchantcreator(List<EnchantmentInfo> enchants, Tile component, Boolean all) // creates global/local enchantlist
@@ -245,6 +245,7 @@ namespace enchmouseover.mod
                         if (enchname == "Poison") { enchname = "Ranger's Bane"; };
                         if (enchname == "Curse 1") { enchname = "Cluster Hex"; };
                         if (enchname == "Curse 2") { enchname = "Cluster Hex"; };
+                        if (enchname == "Decomposing") { enchname = "Return To Nature"; };
                         Texture2D newtexture = new Texture2D(2, 2, TextureFormat.RGB24, false);
                         newtexture = App.AssetLoader.LoadTexture2D(cardnametoimageid(enchname).ToString());
                         this.enchantslib.Add(tmpench.name, newtexture);
