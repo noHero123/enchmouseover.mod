@@ -142,7 +142,7 @@ namespace enchmouseover.mod
 
 		public static int GetVersion ()
 		{
-			return 5;
+			return 6;
 		}
 
         private void Allenchantcreator(List<EnchantmentInfo> enchants, Tile component, Boolean all) // creates global/local enchantlist
@@ -242,10 +242,17 @@ namespace enchmouseover.mod
                     if (!enchantslib.ContainsKey(tmpench.name))
                     {
                         string enchname = tmpench.name;
-                        if (enchname == "Poison") { enchname = "Ranger's Bane"; };
-                        if (enchname == "Curse 1") { enchname = "Cluster Hex"; };
-                        if (enchname == "Curse 2") { enchname = "Cluster Hex"; };
+                        if (enchname == ("Poison Immunity")) { enchname = "Sand Pact Memorial"; };
+                        if (enchname.StartsWith("Resistance")) { enchname = "Stone Pact Memorial"; };
+                        if (enchname.StartsWith("Poison")) { enchname = "Ranger's Bane"; };
+                        if (enchname.StartsWith("Curse")) { enchname = "Cluster Hex"; };
                         if (enchname == "Decomposing") { enchname = "Return To Nature"; };
+                        if (enchname == "Piercing") { enchname = "Piercing Projectile"; };
+                        if (enchname.StartsWith("Armor")) { enchname = "Wings Shield"; };
+                        if (enchname == "Slayer") { enchname = "Ilmire Hunter"; };
+                        if (enchname.StartsWith("Move")) { enchname = "New Orders"; };
+                        if (enchname.StartsWith("Haste")) { enchname = "Speed"; };
+                        if (enchname.StartsWith("Spiky")) { enchname = "Illthorn"; };
                         Texture2D newtexture = new Texture2D(2, 2, TextureFormat.RGB24, false);
                         newtexture = App.AssetLoader.LoadTexture2D(cardnametoimageid(enchname).ToString());
                         this.enchantslib.Add(tmpench.name, newtexture);
