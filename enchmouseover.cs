@@ -49,12 +49,15 @@ namespace enchmouseover.mod
         private int[] cardImageid;
         private int showpattern=2;
 
-        private MethodInfo mi;
         private FieldInfo reftile;
         private FieldInfo tileover;
         private FieldInfo mrktpe;
         private FieldInfo sbfrm;
         private int cardnametoimageid(string name) { return cardImageid[Array.FindIndex(cardnames, element => element.Equals(name))]; }
+
+        MethodInfo updatechat = typeof(BattleMode).GetMethod("updateChat", BindingFlags.NonPublic | BindingFlags.Instance);
+        MethodInfo mi=typeof(BattleMode).GetMethod("getAllUnitsCopy", BindingFlags.NonPublic | BindingFlags.Instance);
+        MethodInfo hm = typeof(BattleMode).GetMethod("handleGameChatMessage", BindingFlags.NonPublic | BindingFlags.Instance);
 
         public void onConnect(OnConnectData ocd)
         { 
@@ -98,14 +101,25 @@ namespace enchmouseover.mod
             try
             {
                 String chatMsg = msgs;
-                MethodInfo mi = typeof(BattleMode).GetMethod("updateChat", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (mi != null) // send chat message
+
+                if (hm != null) // send chat message
                 {
-                    mi.Invoke(this.bm, new String[] { chatMsg });
+                    GameChatMessageMessage gcmm = new GameChatMessageMessage(chatMsg);
+                    gcmm.from = "Enchmouseover";
+                    hm.Invoke(this.bm, new GameChatMessageMessage[] { gcmm });
                 }
                 else // can't invoke updateChat
                 {
                 }
+
+                /*if (updatechat != null) // send chat message
+                {
+
+                    updatechat.Invoke(this.bm, new String[] { chatMsg });
+                }
+                else // can't invoke updateChat
+                {
+                }*/
             }
             catch // could not get information
             {
@@ -142,7 +156,7 @@ namespace enchmouseover.mod
 
 		public static int GetVersion ()
 		{
-			return 6;
+			return 7;
 		}
 
         private void Allenchantcreator(List<EnchantmentInfo> enchants, Tile component, Boolean all) // creates global/local enchantlist
@@ -253,8 +267,16 @@ namespace enchmouseover.mod
                         if (enchname.StartsWith("Move")) { enchname = "New Orders"; };
                         if (enchname.StartsWith("Haste")) { enchname = "Speed"; };
                         if (enchname.StartsWith("Spiky")) { enchname = "Illthorn"; };
+                        if (enchname == ("Inspired")) { enchname = "Jarl Urhald"; };
                         Texture2D newtexture = new Texture2D(2, 2, TextureFormat.RGB24, false);
-                        newtexture = App.AssetLoader.LoadTexture2D(cardnametoimageid(enchname).ToString());
+                        try
+                        {
+                            newtexture = App.AssetLoader.LoadTexture2D(cardnametoimageid(enchname).ToString());
+                        }
+                        catch
+                        {
+                            this.writetxtinchat("Enchmod doesnt know " + enchname);
+                        }
                         this.enchantslib.Add(tmpench.name, newtexture);
                     }
                 }
