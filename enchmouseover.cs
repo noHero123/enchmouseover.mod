@@ -54,7 +54,7 @@ namespace enchmouseover.mod
         private FieldInfo mrktpe;
         private FieldInfo sbfrm;
         private int cardnametoimageid(string name) { return cardImageid[Array.FindIndex(cardnames, element => element.Equals(name))]; }
-
+        private FieldInfo buffMaterialInfo = typeof(Unit).GetField("buffMaterial", BindingFlags.Instance | BindingFlags.NonPublic);
         MethodInfo updatechat = typeof(BattleMode).GetMethod("updateChat", BindingFlags.NonPublic | BindingFlags.Instance);
         MethodInfo mi=typeof(BattleMode).GetMethod("getAllUnitsCopy", BindingFlags.NonPublic | BindingFlags.Instance);
         MethodInfo hm = typeof(BattleMode).GetMethod("handleGameChatMessage", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -156,7 +156,7 @@ namespace enchmouseover.mod
 
 		public static int GetVersion ()
 		{
-			return 7;
+			return 8;
 		}
 
         private void Allenchantcreator(List<EnchantmentInfo> enchants, Tile component, Boolean all) // creates global/local enchantlist
@@ -332,6 +332,7 @@ namespace enchmouseover.mod
                    scrollsTypes["BattleMode"].Methods.GetMethod("tileOver", new Type[]{typeof(Tile),typeof(int),typeof(int)} ),
                     scrollsTypes["BattleMode"].Methods.GetMethod("tileOut", new Type[]{typeof(GameObject),typeof(int),typeof(int)} ),
                     scrollsTypes["BattleMode"].Methods.GetMethod("toggleUnitStats")[0],
+                    scrollsTypes["Unit"].Methods.GetMethod("renderUnit")[0],
                      // scrollsTypes["BattlemodeUI"].Methods.GetMethod("Update")[0],
                     //scrollsTypes["Tile"].Methods.GetMethod("updateMoveAnim")[0],
                    //scrollsTypes["ChatUI"].Methods.GetMethod("OnGUI")[0],
@@ -467,6 +468,35 @@ namespace enchmouseover.mod
                 }
             }
 
+            if (info.target is Unit && info.targetMethod.Equals("renderUnit"))
+            {
+                if (bm == null) return;
+
+                Unit current = (Unit)info.target;
+                
+                List<EnchantmentInfo> enchants = current.getBuffs();
+                if (enchants.Count > 0)
+                {
+                    Tile component = ((BattleMode)bm).getTileFromUnit(current);
+                    Tile.SelectionType marker = (Tile.SelectionType)mrktpe.GetValue(component);
+                    if (marker != Tile.SelectionType.Hover)
+                    {
+                        
+                        Material buffmat = (Material)this.buffMaterialInfo.GetValue(info.target);
+                        buffmat.SetColor("_Color", ColorUtil.FromInts(255, 0, 0, 220));
+                        buffmat.color = new Color(1.0f, 0.0f, 0.0f, 0.7f);
+                        //current.renderer.material.color = new Color(1.0f, 0.5f, 0.5f, 0.7f);
+                        //GameObject refer = (GameObject)reftile.GetValue(component);
+                        //refer.renderer.material.color = new Color(1.0f, 0f, 0f, 0.4f);
+                        //GameObject to = (GameObject)tileover.GetValue(component);
+                        //to.renderer.material.color = new Color(1.0f, 0f, 0f, 0.4f);
+
+                        //component.getReference().renderer.material.color = new Color(1f, 0f, 0f, 0.4f);
+                    }
+                }
+            }
+              
+
 
             if (info.target is BattleMode && info.targetMethod.Equals("OnGUI"))
             {
@@ -513,10 +543,13 @@ namespace enchmouseover.mod
                     }
                 }
 
-                
+                /*
                 foreach (Unit current in (List<Unit>)mi.Invoke(this.bm, null))
                 {
-                    current.renderer.material.color = new Color(1f, 1f, 1f, 1f);
+                    //current.renderer.material.color = new Color(1f, 1f, 1f, 1f);
+                    Material buffmat = (Material)this.buffMaterialInfo.GetValue(current);
+                    Console.WriteLine("#clolor12" + buffmat.GetColor("_Color"));
+                    buffmat.SetColor("_Color", ColorUtil.FromHex24(16777173u));
                     List<EnchantmentInfo> enchants = current.getBuffs();
                     Tile component = ((BattleMode)info.target).getTileFromUnit(current);
                     if (enchants.Count > 0)
@@ -524,14 +557,20 @@ namespace enchmouseover.mod
                         Tile.SelectionType marker = (Tile.SelectionType)mrktpe.GetValue(component);
                         if (marker != Tile.SelectionType.Hover)
                         {
-                            current.renderer.material.color = new Color(1.0f, 0.5f, 0.5f, 0.7f);
+                            //current.renderer.material.color = new Color(1.0f, 0.5f, 0.5f, 0.7f);
+                            buffmat.SetColor("_Color", ColorUtil.FromInts(255,0,0,220));
+                            buffmat.color = new Color(1.0f, 0.0f, 0.0f, 0.7f);
+                            current.renderer.material.color = new Color(1.0f, 0.0f, 0.0f, 0.7f);
+                            Console.WriteLine("#clolorrrrr" + buffmat.GetColor("_Color"));
                             //GameObject refer = (GameObject)reftile.GetValue(component);
                             //refer.renderer.material.color = new Color(1.0f, 0f, 0f, 0.4f);
                             //GameObject to = (GameObject)tileover.GetValue(component);
                             //to.renderer.material.color = new Color(1.0f, 0f, 0f, 0.4f);
+                            
+                            //component.getReference().renderer.material.color = new Color(1f, 0f, 0f, 0.4f);
                         }
                     }
-                }
+                }*/
                 
             }
 
