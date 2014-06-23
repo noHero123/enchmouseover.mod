@@ -156,7 +156,7 @@ namespace enchmouseover.mod
 
 		public static int GetVersion ()
 		{
-			return 8;
+			return 9;
 		}
 
         private void Allenchantcreator(List<EnchantmentInfo> enchants, Tile component, Boolean all) // creates global/local enchantlist
@@ -263,6 +263,7 @@ namespace enchmouseover.mod
                         if (enchname == "Decomposing") { enchname = "Return To Nature"; };
                         if (enchname == "Piercing") { enchname = "Piercing Projectile"; };
                         if (enchname.StartsWith("Armor")) { enchname = "Wings Shield"; };
+                        if (enchname.StartsWith("Magic Armor")) { enchname = "Metempsychosis"; };
                         if (enchname == "Slayer") { enchname = "Ilmire Hunter"; };
                         if (enchname.StartsWith("Move")) { enchname = "New Orders"; };
                         if (enchname.StartsWith("Haste")) { enchname = "Speed"; };
@@ -329,7 +330,7 @@ namespace enchmouseover.mod
                 return new MethodDefinition[] {
                     scrollsTypes["BattleMode"].Methods.GetMethod("sendBattleRequest", new Type[]{typeof(Message)}),
                     scrollsTypes["BattleMode"].Methods.GetMethod("OnGUI")[0],
-                   scrollsTypes["BattleMode"].Methods.GetMethod("tileOver", new Type[]{typeof(Tile),typeof(int),typeof(int)} ),
+                   scrollsTypes["BattleMode"].Methods.GetMethod("tileOver", new Type[]{typeof(TilePosition)} ),
                     scrollsTypes["BattleMode"].Methods.GetMethod("tileOut", new Type[]{typeof(GameObject),typeof(int),typeof(int)} ),
                     scrollsTypes["BattleMode"].Methods.GetMethod("toggleUnitStats")[0],
                     scrollsTypes["Unit"].Methods.GetMethod("renderUnit")[0],
@@ -460,7 +461,8 @@ namespace enchmouseover.mod
                     foreach (Unit current in (List<Unit>)mi.Invoke(this.bm,null))
                     {  
                         List<EnchantmentInfo> enchants = current.getBuffs();
-                        Tile component = ((BattleMode)info.target).getTileFromUnit(current);
+                        //Tile component = ((BattleMode)info.target).getTileFromUnit(current);
+                        Tile component = ((BattleMode)info.target).getTile(current.getTilePosition());
                         this.Allenchantcreator(enchants, component, true);
               
                     }
@@ -471,13 +473,12 @@ namespace enchmouseover.mod
             if (info.target is Unit && info.targetMethod.Equals("renderUnit"))
             {
                 if (bm == null) return;
-
                 Unit current = (Unit)info.target;
-                
                 List<EnchantmentInfo> enchants = current.getBuffs();
                 if (enchants.Count > 0)
                 {
-                    Tile component = ((BattleMode)bm).getTileFromUnit(current);
+                    //Tile component = ((BattleMode)bm).getTileFromUnit(current);
+                    Tile component = ((BattleMode)bm).getTile(current.getTilePosition());
                     Tile.SelectionType marker = (Tile.SelectionType)mrktpe.GetValue(component);
                     if (marker != Tile.SelectionType.Hover)
                     {
@@ -517,7 +518,8 @@ namespace enchmouseover.mod
                     foreach (Unit current in (List<Unit>)mi.Invoke(this.bm, null))
                     {
                         List<EnchantmentInfo> enchants = current.getBuffs();
-                        Tile component = ((BattleMode)info.target).getTileFromUnit(current);
+                        //Tile component = ((BattleMode)info.target).getTileFromUnit(current);
+                        Tile component = ((BattleMode)info.target).getTile(current.getTilePosition());
                         this.Allenchantcreator(enchants, component, true);
                     }
 
@@ -577,8 +579,10 @@ namespace enchmouseover.mod
            if (info.target is BattleMode && info.targetMethod.Equals("tileOver"))
             {
                 showpicture = true;
-                Tile component = (Tile)info.arguments[0];
-                Unit unitFromTile = ((BattleMode)info.target).getUnitFromTile(component);
+                TilePosition tilepos = (TilePosition)info.arguments[0];
+                //Unit unitFromTile = ((BattleMode)info.target).getUnitFromTile(component);
+                Unit unitFromTile = ((BattleMode)info.target).getUnit(tilepos);
+                Tile component = ((BattleMode)info.target).getTile(tilepos);
                 enchlist.Clear();
                 if (unitFromTile != null)
                 {
