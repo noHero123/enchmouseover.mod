@@ -27,11 +27,21 @@ namespace enchmouseover.mod
         
     }
 
-    /*struct playerinfo 
+    public class moveunit
     {
-        public string ID;
-        public string name;
-    }*/
+        public int move = 0;
+        public TileColor tp = TileColor.unknown;
+        public int movesdone = 0;
+
+        public moveunit(int m, TilePosition p)
+        {
+            this.move = m;
+            this.tp = p.color;
+            
+        }
+
+    }
+
 
     public class enchmouseover : BaseMod, ICommListener
 	{
@@ -53,11 +63,30 @@ namespace enchmouseover.mod
         private FieldInfo tileover;
         private FieldInfo mrktpe;
         private FieldInfo sbfrm;
+        private FieldInfo chargeAnim = typeof(Tile).GetField("chargeAnim", BindingFlags.Instance | BindingFlags.NonPublic);
+        private FieldInfo targetAnimBack = typeof(Tile).GetField("targetAnimBack", BindingFlags.Instance | BindingFlags.NonPublic);
+        private FieldInfo targetAnimFront = typeof(Tile).GetField("targetAnimFront", BindingFlags.Instance | BindingFlags.NonPublic);
+
         private int cardnametoimageid(string name) { return cardImageid[Array.FindIndex(cardnames, element => element.Equals(name))]; }
         private FieldInfo buffMaterialInfo = typeof(Unit).GetField("buffMaterial", BindingFlags.Instance | BindingFlags.NonPublic);
         MethodInfo updatechat = typeof(BattleMode).GetMethod("updateChat", BindingFlags.NonPublic | BindingFlags.Instance);
         MethodInfo mi=typeof(BattleMode).GetMethod("getAllUnitsCopy", BindingFlags.NonPublic | BindingFlags.Instance);
         MethodInfo hm = typeof(BattleMode).GetMethod("handleGameChatMessage", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        MethodInfo selectTargetMethod = typeof(BattleMode).GetMethod("selectTargetArea", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        TileColor showLobbers = TileColor.unknown;
+        List<TilePosition> enemyLobbers = new List<TilePosition>();
+        TilePosition currentHover = new TilePosition(TileColor.white, 1, 1);
+
+        Dictionary<long, moveunit> moveCounter = new Dictionary<long, moveunit>();
+
+        private FieldInfo attackcounterinfo = typeof(Unit).GetField("attackCounter", BindingFlags.Instance | BindingFlags.NonPublic);
+        private FieldInfo attackCounterObjArrinfo = typeof(Unit).GetField("attackCounterObjArr", BindingFlags.Instance | BindingFlags.NonPublic);
+        private FieldInfo countdownStatinfo = typeof(Unit).GetField("countdownStat", BindingFlags.Instance | BindingFlags.NonPublic);
+        private MethodInfo createSymbolsMethodInfo = typeof(Unit).GetMethod("createSymbols", BindingFlags.NonPublic | BindingFlags.Instance);
+        
+        bool mark = false;
 
         public void onConnect(OnConnectData ocd)
         { 
@@ -83,16 +112,98 @@ namespace enchmouseover.mod
                     cardImageid[i] = Convert.ToInt32(d[i]["cardImage"]);
                 }
 
-                App.Communicator.removeListener(this);//dont need the listener anymore
+                //App.Communicator.removeListener(this);//dont need the listener anymore
             }
+
+            if(msg is AbilityInfoMessage)
+            {
+                AbilityInfoMessage aim = (AbilityInfoMessage)msg;
+                if (aim.abilityId == "Move")//aim.isPlayable &&
+                {
+                    this.showLobbers = TileColor.white;
+                    if (aim.unitPosition.color == TileColor.white) this.showLobbers = TileColor.black;
+
+                    
+                    this.calculateEnemyLobbers(this.showLobbers);
+
+                }
+                this.showLobbers = TileColor.unknown;
+            }
+
+            if (msg is CardInfoMessage)
+            {
+                CardInfoMessage aim = (CardInfoMessage)msg;
+                //Console.WriteLine("cardinfo");
+                if (aim.card.getPieceKind() == CardType.Kind.CREATURE || aim.card.getPieceKind() == CardType.Kind.STRUCTURE)//aim.isPlayable &&
+                {
+                    this.mark =true;
+                    if (aim.data.selectableTiles.Count >= 1)
+                    {
+                        //Console.WriteLine("cardinfo " + aim.data.selectableTiles.tileSets[0][0].color);
+                        this.showLobbers = aim.data.selectableTiles.tileSets[0][0].color.otherColor();
+                        this.calculateEnemyLobbers(this.showLobbers);
+                    }
+
+                }
+                this.showLobbers = TileColor.unknown;
+            }
+
 
             return;
         }
-        public void onReconnect()
+
+
+        private void calculateEnemyLobbers(TileColor tc)
         {
-            return; // don't care
+            this.enemyLobbers.Clear();
+            //this.bm.getTileList(tc);
+            //Console.WriteLine("##");
+            for (int i = 0; i < 5; i++)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    Unit unitFromTile = this.bm.getUnit(tc, i, j);
+                    if (unitFromTile == null) continue;
+                    /*int movecount = 0;
+                    foreach (ActiveAbility aa in unitFromTile.getActiveAbilities())
+                    {
+                        Console.WriteLine(aa.name);
+                        if (aa.isMoveLike()) movecount++;
+                    }
+                    Console.WriteLine("-");*/
+                    TilePosition tp2 = new TilePosition(tc.otherColor(), i, 2 - j);
+
+                    if (unitFromTile.getTargetArea() == TargetArea.RADIUS_4)
+                    {
+                        selectTargetMethod.Invoke(this.bm, new object[]{TargetArea.RADIUS_4, tp2});
+                        selectTargetArea(TargetArea.RADIUS_4, tp2);
+                    }
+                    if (unitFromTile.getTargetArea() == TargetArea.RADIUS_3)
+                    {
+                        selectTargetMethod.Invoke(this.bm, new object[] { TargetArea.RADIUS_3, tp2 });
+                        selectTargetArea(TargetArea.RADIUS_3, tp2);
+                    }
+                    /*if (unitFromTile.getTargetArea() == TargetArea.RADIUS_7)
+                    {
+                        TilePosition tp2 = new TilePosition(tc.otherColor(), i, 2 - j);
+                        selectTargetMethod.Invoke(this.bm, new object[] { TargetArea.RADIUS_7, tp2 });
+                    }*/
+
+                }
+            }
+
         }
 
+        private void selectTargetArea(TargetArea targetArea, TilePosition tp)
+        {
+            Tile.SelectionType markedID = targetArea.selectionType();
+            List<TilePosition> list = targetArea.getTargets(tp);
+            List<Tile> tiles = new List<Tile>();
+            foreach (TilePosition current2 in list)
+            {
+                this.enemyLobbers.Add(current2); 
+            }
+        }
 
         public void writetxtinchat(string msgs)
         {
@@ -156,7 +267,7 @@ namespace enchmouseover.mod
 
 		public static int GetVersion ()
 		{
-			return 9;
+			return 10;
 		}
 
         private void Allenchantcreator(List<EnchantmentInfo> enchants, Tile component, Boolean all) // creates global/local enchantlist
@@ -330,11 +441,20 @@ namespace enchmouseover.mod
                 return new MethodDefinition[] {
                     scrollsTypes["BattleMode"].Methods.GetMethod("sendBattleRequest", new Type[]{typeof(Message)}),
                     scrollsTypes["BattleMode"].Methods.GetMethod("OnGUI")[0],
-                   scrollsTypes["BattleMode"].Methods.GetMethod("tileOver", new Type[]{typeof(TilePosition)} ),
+                    scrollsTypes["BattleMode"].Methods.GetMethod("Update")[0],
+
+                    scrollsTypes["BattleMode"].Methods.GetMethod("tileOver", new Type[]{typeof(TilePosition)} ),
                     scrollsTypes["BattleMode"].Methods.GetMethod("tileOut", new Type[]{typeof(GameObject),typeof(int),typeof(int)} ),
                     scrollsTypes["BattleMode"].Methods.GetMethod("toggleUnitStats")[0],
+
                     scrollsTypes["Unit"].Methods.GetMethod("renderUnit")[0],
-                     // scrollsTypes["BattlemodeUI"].Methods.GetMethod("Update")[0],
+
+                    scrollsTypes["BattleMode"].Methods.GetMethod("markMoveTile", new Type[]{typeof(TilePosition),typeof(TilePosition)} ),
+                    scrollsTypes["Tile"].Methods.GetMethod("markInternal", new Type[]{typeof(Tile.SelectionType),typeof(float)} ),
+
+                    scrollsTypes["BattleMode"].Methods.GetMethod("forceRunEffect", new Type[]{typeof(EffectMessage)}),
+                    
+                    // scrollsTypes["BattlemodeUI"].Methods.GetMethod("Update")[0],
                     //scrollsTypes["Tile"].Methods.GetMethod("updateMoveAnim")[0],
                    //scrollsTypes["ChatUI"].Methods.GetMethod("OnGUI")[0],
 
@@ -347,8 +467,104 @@ namespace enchmouseover.mod
 		}
 
 
+        public long getId(Unit u)
+        {
 
+            return u.GetInstanceID();// better than cardid because token have the same ;_;
+        }
 
+        public void resetMoveAllUnits()
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    Unit unitFromTile = this.bm.getUnit(TileColor.white, i, j);
+                    if (unitFromTile != null)
+                    {
+                        updateMoveUnit(unitFromTile, unitFromTile.getBuffs(), unitFromTile.getActiveAbilities(), unitFromTile.getName(), unitFromTile.getTilePosition());
+                    }
+
+                    unitFromTile = this.bm.getUnit(TileColor.black, i, j);
+                    if (unitFromTile != null)
+                    {
+                        updateMoveUnit(unitFromTile, unitFromTile.getBuffs(), unitFromTile.getActiveAbilities(), unitFromTile.getName(), unitFromTile.getTilePosition());
+                    }
+                }
+            }
+        }
+
+        public void updateMoveUnit(Unit un, List<EnchantmentInfo> enchants, ActiveAbility[] actives, string name, TilePosition tp)
+        {
+            long id = this.getId(un);
+            int hasmove = 0;
+            foreach (ActiveAbility aa in actives)
+            {
+                if (aa.isMoveLike()) hasmove = 1;
+            }
+            if (name == "Infected Gravelock") hasmove = 0;//maybe at last?
+            if (name == "Stormknight") hasmove = 2;//maybe at last?
+            if (this.moveCounter.ContainsKey(id))
+            {
+                this.moveCounter[id].move = hasmove;
+            }
+            else
+            {
+                this.moveCounter.Add(id, new moveunit(hasmove, tp));
+            }
+
+            foreach (EnchantmentInfo ei in enchants)
+            {
+                if (ei.name == "Move") this.moveCounter[id].move++; // is maybe wrong (see trials-buffs)
+                if (ei.name == "Binding Root") this.moveCounter[id].move -= 2;
+                if (ei.name == "Dryadic Power") this.moveCounter[id].move -= 1;
+                if (ei.name == "Horn of Ages") this.moveCounter[id].move -= 1;
+                if (ei.name == "Malevolent Gaze") this.moveCounter[id].move -= 2;
+                if (ei.name == "New Orders") this.moveCounter[id].move += 1;
+                if (ei.name == "Nuru's Needle") this.moveCounter[id].move -= 1;
+                //if (ei.name == "Oum Lasa High Guard") this.moveCounter[id] -= 100;
+                if (ei.name == "Roasted Bean Potion") this.moveCounter[id].move += 1;
+                if (ei.name == "Wings Captain") this.moveCounter[id].move += 1;
+            }
+
+            //oum Lasa high guard effect:
+            //Console.WriteLine("" + tp.ToString());
+            for (int i = 0; i < tp.column; i++)
+            {
+                Unit u = this.bm.getUnit(tp.color, tp.row, i);
+
+                if (u != null)
+                {
+                    //Console.WriteLine("own " + u.name);
+                    return;
+                }
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                Unit u = this.bm.getUnit(tp.color.otherColor(), tp.row, i);
+                if (u != null)
+                {
+                    //Console.WriteLine("enemy " + u.name);
+                    if (u.getName() == "Oum Lasa High Guard")
+                    {
+                        this.moveCounter[id].move = 0;
+                    }
+                    return;
+                }
+            }
+        }
+
+        public void printMove(TileColor tc)
+        {
+            foreach (KeyValuePair<long, moveunit> kvp in this.moveCounter)
+            {
+                if (kvp.Value.tp != tc) continue;
+
+                Console.WriteLine(kvp.Key + " move: " + kvp.Value.movesdone + " " +kvp.Value.move + " " + kvp.Value.tp.ToString());
+                
+            }
+ 
+        }
 
         public override bool WantsToReplace(InvocationInfo info)
         {
@@ -371,8 +587,6 @@ namespace enchmouseover.mod
             }
             return false;
         }
-
-
 
         public override void ReplaceMethod(InvocationInfo info, out object returnValue)
         {
@@ -439,17 +653,134 @@ namespace enchmouseover.mod
             }
         }
 
+        TilePosition tpStatsupdate = null;
+
         public override void BeforeInvoke(InvocationInfo info)
         {
 
+            if (info.target is BattleMode && info.targetMethod.Equals("forceRunEffect"))
+            {
+                EffectMessage currentEffect = (EffectMessage)info.arguments[0];
 
+                string type = currentEffect.type;
+                try
+                {
+                    if (type == "TurnBegin")
+                    {
+                        resetMoveAllUnits();
+
+                        foreach (KeyValuePair<long, moveunit> mu in this.moveCounter)
+                        {
+                            mu.Value.movesdone = 0;
+                        }
+                    }
+
+                    
+
+                    if (type == "UnitActivateAbility")
+                    {
+                        EMUnitActivateAbility cef = (EMUnitActivateAbility)currentEffect;
+                        string name = cef.name;
+                        if (name == "Move" || name == "Flying")
+                        {
+
+                            long id = this.getId(this.bm.getUnit(cef.unit));
+
+                            if (this.moveCounter.ContainsKey(id)) this.moveCounter[id].movesdone += 1;
+                        }
+                    }
+
+                    if (type == "StatsUpdate")
+                    {
+                        EMStatsUpdate cef = (EMStatsUpdate)currentEffect;
+                        this.tpStatsupdate = new TilePosition( cef.target.color, cef.target.row, cef.target.column);
+                    }
+
+
+
+                    
+
+                }
+                catch
+                {
+                }
+            }
             return;
 
         }
 
-        public override void AfterInvoke (InvocationInfo info, ref object returnValue)
-        
+        private void showMoveOfUnit(Unit u)
         {
+
+            List<GameObject> attackCounterObjArr = (List<GameObject>)attackCounterObjArrinfo.GetValue(u);
+            Stat countdownStat = (Stat)countdownStatinfo.GetValue(u);
+
+            int value = 0;
+            long id= this.getId(u);
+            if (this.moveCounter.ContainsKey(id))
+            {
+                moveunit mu = this.moveCounter[id];
+                value = Math.Max(0, mu.move - mu.movesdone);
+            }
+
+            attackCounterObjArr.ForEach(delegate(GameObject g)
+            {
+                UnityEngine.Object.Destroy(g);
+            });
+            attackCounterObjArr.Clear();
+            attackCounterObjArr.AddRange((List<GameObject>)this.createSymbolsMethodInfo.Invoke(u, new object[] { value, countdownStat.digits.transform }));
+            attackCounterObjArr.ForEach(delegate(GameObject g)
+            {
+                g.tag = "blinkable_countdown";
+            });
+
+            attackCounterObjArr.ForEach(delegate(GameObject g)
+            {
+                g.renderer.material.color = Color.green;
+                if (value == 0) g.renderer.material.color = Color.red;
+            });
+
+        }
+
+        public override void AfterInvoke (InvocationInfo info, ref object returnValue)
+        {
+
+            if (info.target is BattleMode && info.targetMethod.Equals("forceRunEffect"))
+            {
+                if (tpStatsupdate != null)
+                {
+                    Unit statsupdate = this.bm.getUnit(tpStatsupdate);
+                    if (statsupdate != null)
+                    {
+                        updateMoveUnit(statsupdate, statsupdate.getBuffs(), statsupdate.getActiveAbilities(), statsupdate.getName(), statsupdate.getTilePosition());
+                    }
+                    tpStatsupdate = null;
+                }
+
+                EffectMessage currentEffect = (EffectMessage)info.arguments[0];
+                string type = currentEffect.type;
+
+                if (type == "MoveUnit")
+                {
+                    this.resetMoveAllUnits();
+
+                }
+
+                if (type == "SummonUnit")
+                {
+                    EMSummonUnit cef = (EMSummonUnit)currentEffect;
+                    Unit un = this.bm.getUnit(cef.target);
+
+                    this.updateMoveUnit(un, new List<EnchantmentInfo>(), cef.card.getActiveAbilities(), cef.card.getName(), cef.target);
+
+                }
+
+                if (type == "TeleportUnits")
+                {
+                    this.resetMoveAllUnits();
+                }
+            }
+
             if (info.target is BattleMode && info.targetMethod.Equals("toggleUnitStats"))
             {
                 Boolean showUnitStats= (Boolean)typeof(BattleMode).GetField ("showUnitStats", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(info.target);
@@ -496,8 +827,43 @@ namespace enchmouseover.mod
                     }
                 }
             }
-              
 
+            if (info.target is BattleMode && info.targetMethod.Equals("Update"))
+            {
+
+                if (Input.GetKeyDown(KeyCode.M))
+                {
+                    foreach (Unit u in this.bm.getUnitsFor(TileColor.white))
+                    {
+                        showMoveOfUnit(u);
+                    }
+                    foreach (Unit u in this.bm.getUnitsFor(TileColor.black))
+                    {
+                        showMoveOfUnit(u);
+                    }
+                }
+
+                if (Input.GetKeyUp(KeyCode.M))
+                {
+
+                    foreach (Unit u in this.bm.getUnitsFor(TileColor.white))
+                    {
+                        int v = (int)attackcounterinfo.GetValue(u);
+                        u.setAttackCounter(v - 1);
+                        u.setAttackCounter(v);
+                    }
+                    foreach (Unit u in this.bm.getUnitsFor(TileColor.black))
+                    {
+                        int v = (int)attackcounterinfo.GetValue(u);
+                        u.setAttackCounter(v - 1);
+                        u.setAttackCounter(v);
+                    }
+
+
+
+                }
+
+            }
 
             if (info.target is BattleMode && info.targetMethod.Equals("OnGUI"))
             {
@@ -506,8 +872,15 @@ namespace enchmouseover.mod
                     bm = (BattleMode)info.target;
                 }
 
+                if (Input.GetMouseButtonDown(0) && this.currentHover.color != TileColor.unknown)
+                {
+                    //mouse pressed!
+                    this.calculateEnemyLobbers(this.currentHover.color.otherColor());
 
-                
+                    //Console.WriteLine("moves:###############################");
+                    //printMove(TileColor.white);
+                    //printMove(TileColor.black);
+                }
 
 
                 if (showall == true && this.allwayson==true)
@@ -580,6 +953,9 @@ namespace enchmouseover.mod
             {
                 showpicture = true;
                 TilePosition tilepos = (TilePosition)info.arguments[0];
+                this.currentHover.color = tilepos.color;
+                this.currentHover.row = tilepos.row;
+                this.currentHover.column = tilepos.column;
                 //Unit unitFromTile = ((BattleMode)info.target).getUnitFromTile(component);
                 Unit unitFromTile = ((BattleMode)info.target).getUnit(tilepos);
                 Tile component = ((BattleMode)info.target).getTile(tilepos);
@@ -593,11 +969,74 @@ namespace enchmouseover.mod
             if (info.target is BattleMode && info.targetMethod.Equals("tileOut"))
             {
                 showpicture = false;
+                this.currentHover.color = TileColor.unknown;
+            }
+
+            if (info.target is BattleMode && info.targetMethod.Equals("markMoveTile"))
+            {
+                TilePosition tilepos =(TilePosition)info.arguments[1];
+                Tile tile = this.bm.getTile(tilepos);
+                int bad = 0;
+                foreach (TilePosition tp in this.enemyLobbers)
+                {
+                    if (tilepos.Equals(tp))
+                    {
+                        bad++;
+                    }
+                }
+
+                if (bad>=1)
+                {
+                    //Console.WriteLine("bad spottet " +  tilepos);
+                    GameObject to = (GameObject)tileover.GetValue(tile);
+                    GameObject refer = (GameObject)reftile.GetValue(tile);
+                    GameObject taf = (GameObject)targetAnimFront.GetValue(tile);
+                    GameObject tab = (GameObject)targetAnimBack.GetValue(tile);
+                    GameObject car = (GameObject)chargeAnim.GetValue(tile);
+                    refer.renderer.material.color = new Color(1.0f, 0f, 0f, 0.2f * bad);
+                    to.renderer.material.color = new Color(1.0f, 0f, 0f, 0.2f * bad);
+                    if (taf != null) taf.renderer.material.color = new Color(1.0f, 0f, 0f, 0.2f * bad);
+                    if (tab != null) tab.renderer.material.color = new Color(1.0f, 0f, 0f, 0.2f * bad);
+                    if (car != null) car.renderer.material.color = new Color(1.0f, 0f, 0f, 0.2f * bad);
+                }
             }
 
 
+            if (this.mark && info.target is Tile && info.targetMethod.Equals("markInternal"))
+            {
 
+                TilePosition tpp = ((Tile)info.target).tilePosition();
+                Tile tile = (Tile)info.target;
+                int bad = 0;
 
+               if (enemyLobbers.Count >= 1 && enemyLobbers[0].color == tpp.color && ((Tile.SelectionType)info.arguments[0]) == Tile.SelectionType.None)
+                {
+                    //this.mark = false;
+                    return;
+                }
+
+                foreach (TilePosition tp in this.enemyLobbers)
+                {
+                    if (tpp.Equals(tp))
+                    {
+                        bad++;
+                    }
+                }
+
+                if (bad >= 1)
+                {
+                    //Console.WriteLine("bad spottet " + tpp);
+                    GameObject to = (GameObject)tileover.GetValue(tile);
+                    GameObject refer = (GameObject)reftile.GetValue(tile);
+                    GameObject taf = (GameObject)targetAnimFront.GetValue(tile);
+                    GameObject tab = (GameObject)targetAnimBack.GetValue(tile);
+                    refer.renderer.material.color = new Color(1.0f, 0f, 0f, 0.2f * bad);
+                    to.renderer.material.color = new Color(1.0f, 0f, 0f, 0.2f * bad);
+                    if (taf != null) taf.renderer.material.color = new Color(1.0f, 0f, 0f, 0.2f * bad);
+                    if (tab != null) tab.renderer.material.color = new Color(1.0f, 0f, 0f, 0.2f * bad);
+                }
+
+            }
 
             return;
         }
